@@ -1,9 +1,11 @@
 package com.baber.saloonservice.model;
 
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
-
+import org.hibernate.annotations.Where;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -12,13 +14,12 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Saloon {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id;
+@Where(clause = "DELETED = 0")
+public class Saloon extends Base {
+    @Transient
+    private static final long serialVersionUID = -1L;
     private String name;
-    private String adderss;
+    private String address;
     private double rating;
     private int noOfReviews;
     private String imageUrl;
@@ -30,24 +31,38 @@ public class Saloon {
     private String closeTime;
     private String location;
 
-    @OneToMany(cascade = CascadeType.ALL)
+
+    public Saloon(String value) {
+    }
+    @OneToMany(cascade = CascadeType.ALL,mappedBy = "saloon")
+    @JsonManagedReference
     private List<OfferItems> offers;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    private List<SaloonSpecialist> saloonSpecilists;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "saloon")
+    @JsonManagedReference
+    private List<SaloonServices> saloonServics;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    private List<SaloonServics> saloonServics;
+    @OneToMany(cascade = CascadeType.ALL,mappedBy="saloon")
+    @JsonManagedReference
+    private List<SaloonReview> saloonReviews;
 
     @OneToMany(cascade = CascadeType.ALL)
     private List<SaloonGallery> saloonGalleries;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    private List<SaloonReview> saloonReviews;
-
     @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(name = "saloon_category",
-            joinColumns = @JoinColumn(name = "saloon_id"),
+    @JoinTable(name = "saloon_category", joinColumns = @JoinColumn(name = "saloon_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id"))
     private List<SaloonCategory> categories;
+
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "saloon_specialist", joinColumns = @JoinColumn(name = "saloon_id"),
+            inverseJoinColumns = @JoinColumn(name = "specialist_id"))
+    @JsonIgnore
+    private List<SaloonSpecialist> specialists = new ArrayList<>();
+    private String latitude;
+    private String longitude;
+
+    public List<OfferItems> getAllOfferItems() {
+        return offers;
+    }
 }

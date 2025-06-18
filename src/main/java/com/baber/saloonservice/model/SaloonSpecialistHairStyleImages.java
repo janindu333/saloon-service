@@ -12,10 +12,12 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SaloonSpecialistHairStyleImages {
+public class SaloonSpecialistHairStyleImages extends Base{
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idSaloonSpecialistImage;
     private String saloonSpecialistImageUrl;
+
+    @ManyToOne
+    @JoinColumn(name = "saloon_specialist_id")
+    private SaloonSpecialist saloonSpecialist;
+
 }

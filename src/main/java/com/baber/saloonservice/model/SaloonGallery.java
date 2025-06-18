@@ -12,10 +12,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SaloonGallery {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Long id;
+public class SaloonGallery extends Base{
     private String imageUrl;
+
+    @ManyToOne
+    @JoinColumn(name = "saloon_id")
+    private Saloon saloon;
 }
