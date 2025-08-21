@@ -29,8 +29,17 @@ public class Saloon extends Base {
     private String openingDays;
     private String openTime;
     private String closeTime;
-    private String location;
-
+    // Primary location for the saloon
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_location_id")
+    private Location primaryLocation;
+    
+    // Multiple locations where this saloon operates (branch offices)
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(name = "saloon_locations", 
+               joinColumns = @JoinColumn(name = "saloon_id"),
+               inverseJoinColumns = @JoinColumn(name = "location_id"))
+    private List<Location> locations = new ArrayList<>();
 
     public Saloon(String value) {
     }
@@ -59,8 +68,6 @@ public class Saloon extends Base {
             inverseJoinColumns = @JoinColumn(name = "specialist_id"))
     @JsonIgnore
     private List<SaloonSpecialist> specialists = new ArrayList<>();
-    private String latitude;
-    private String longitude;
 
     public List<OfferItems> getAllOfferItems() {
         return offers;

@@ -1,18 +1,23 @@
 package com.baber.saloonservice.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 import java.io.Serializable;
 import java.util.List;
+
+import com.baber.saloonservice.dto.SaloonSpecialistDTO; 
+
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SaloonDTO implements Serializable {
+@Builder
+public class SaloonDetailDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
@@ -27,26 +32,15 @@ public class SaloonDTO implements Serializable {
     private String openingDays;
     private String openTime;
     private String closeTime;
+    private String location;
+    private String latitude;
+    private String longitude;
     
-    // Location information
-    private LocationDTO primaryLocation;
-    private List<LocationDTO> locations;
-    
-    // Categories
-    private List<SaloonCategoryDTO> categories;
-    
-    // Services
-    private List<SaloonServicesDTO> services;
-    
-    // Reviews
-    private List<SaloonReviewDTO> reviews;
-    
-    // Specialists
-    private List<SaloonSpecialistDTO> specialists;
-    
-    // Offers
+    // Related entities
     private List<OfferItemsDto> offers;
-    
-    // Gallery
-    private List<SaloonGalleryDTO> gallery;
-}
+    private List<SaloonCategoryDTO> categories;
+    private List<SaloonSpecialistDTO> specialists;
+    private List<SaloonReviewDTO> reviews;
+    private List<SaloonGalleryDTO> galleries;
+    private List<SaloonServicesDTO> services;
+} 

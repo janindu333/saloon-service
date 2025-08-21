@@ -11,6 +11,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/saloon/services")
 public class SaloonServicesController {
@@ -103,6 +105,28 @@ public class SaloonServicesController {
         } else {
             return new BaseResponse<>(false, null, 0, "update failed", null
             );
+        }
+    }
+
+    @GetMapping("/getBySaloonId/{saloonId}")
+    public BaseResponse<List<SaloonServices>> getServicesBySaloonId(@PathVariable Long saloonId) {
+        try {
+            List<SaloonServices> services = saloonServicesService.getServicesBySaloonId(saloonId);
+            return new BaseResponse<>(true, "Success", 0, "", services);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to fetch services: " + e.getMessage(), 1, "", null);
+        }
+    }
+
+    @GetMapping("/getServiceTypesByServiceId/{serviceId}")
+    public BaseResponse<List<SaloonServiceType>> getServiceTypesByServiceId(@PathVariable Long serviceId) {
+        try {
+            List<SaloonServiceType> serviceTypes = saloonServicesService.getServiceTypesByServiceId(serviceId);
+            return new BaseResponse<>(true, "Success", 0, "", serviceTypes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to fetch service types: " + e.getMessage(), 1, "", null);
         }
     }
 }

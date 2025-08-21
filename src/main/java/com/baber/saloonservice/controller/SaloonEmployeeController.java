@@ -14,7 +14,7 @@ import com.baber.saloonservice.dto.BaseResponse;
 import com.baber.saloonservice.dto.SpecialistToSaloonRequest;
 import com.baber.saloonservice.model.Saloon;
 import com.baber.saloonservice.model.SaloonSpecialist;
-import com.baber.saloonservice.model.SaloonSpecialistDTO;
+import com.baber.saloonservice.dto.SaloonSpecialistDTO;
 import com.baber.saloonservice.model.SaloonSpecialistHairStyleImages;
 import com.baber.saloonservice.service.SaloonService;
 import com.baber.saloonservice.service.SaloonSpecialistService;
@@ -56,7 +56,15 @@ public class SaloonEmployeeController {
                     .map(SaloonSpecialistHairStyleImages::getId)
                     .collect(Collectors.toSet());
 
-            SaloonSpecialistDTO specialistDTO = new SaloonSpecialistDTO(specialist.getId(), saloonIds,idSaloonSpecialistImages);
+            SaloonSpecialistDTO specialistDTO = new SaloonSpecialistDTO();
+            specialistDTO.setId(specialist.getId());
+            specialistDTO.setName(specialist.getName());
+            specialistDTO.setPossition(specialist.getPossition());
+            specialistDTO.setImage(specialist.getImage());
+            specialistDTO.setNumber(specialist.getNumber());
+            specialistDTO.setAbout(specialist.getAbout());
+            specialistDTO.setSaloonIds(saloonIds);
+            specialistDTO.setHairstyleImageIds(idSaloonSpecialistImages);
             specialistDTOs.add(specialistDTO);
         }
 
@@ -101,7 +109,7 @@ public class SaloonEmployeeController {
                     //                specialist.getSaloons().add(saloon);
 
                     // Update the saloon record
-                    saloonService.createSaloon(saloon);
+                //    saloonService.createSaloon(saloon);
 
                     return new BaseResponse<>(true, "Success", 0, "", null);
                 } else {
@@ -135,7 +143,7 @@ public class SaloonEmployeeController {
                     specialists.remove(optionalSaloonSpecialist.get());
 
                     // Update the saloon record
-                    saloonService.createSaloon(saloon);
+                 //   saloonService.createSaloon(saloon);
 
                     return new BaseResponse<>(true, "Success", 0, "", null);
                 }else {
@@ -150,4 +158,51 @@ public class SaloonEmployeeController {
         }
     }
 
+    @GetMapping("/getById/{id}")
+    public BaseResponse<SaloonSpecialist> getSpecialistById(@PathVariable Long id) {
+        try {
+            SaloonSpecialist specialist = saloonSpecialistService.getSpecialistById(id);
+            if (specialist != null) {
+                return new BaseResponse<>(true, "Success", 0, "", specialist);
+            } else {
+                return new BaseResponse<>(false, "Specialist not found", 1, "", null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to fetch specialist: " + e.getMessage(), 1, "", null);
+        }
+    }
+
+    @PutMapping("/update/{id}")
+    public BaseResponse<String> updateSpecialist(@PathVariable Long id, @RequestBody SaloonSpecialist specialist) {
+        try {
+            saloonSpecialistService.updateSpecialist(id, specialist);
+            return new BaseResponse<>(true, "Specialist updated successfully", 0, "", null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to update specialist: " + e.getMessage(), 1, "", null);
+        }
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public BaseResponse<String> deleteSpecialist(@PathVariable Long id) {
+        try {
+            saloonSpecialistService.deleteSpecialist(id);
+            return new BaseResponse<>(true, "Specialist deleted successfully", 0, "", null);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to delete specialist: " + e.getMessage(), 1, "", null);
+        }
+    }
+
+    @GetMapping("/getSpecialistsByService/{serviceId}")
+    public BaseResponse<List<SaloonSpecialist>> getSpecialistsByService(@PathVariable Long serviceId) {
+        try {
+            List<SaloonSpecialist> specialists = saloonSpecialistService.getSpecialistsByService(serviceId);
+            return new BaseResponse<>(true, "Success", 0, "", specialists);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BaseResponse<>(false, "Failed to fetch specialists by service: " + e.getMessage(), 1, "", null);
+        }
+    }
 }
