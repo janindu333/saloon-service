@@ -15,7 +15,8 @@ import java.util.List;
 public class SaloonDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;
+    private Long id; // Internal ID (kept for backward compatibility)
+    private java.util.UUID publicId; // UUID for external APIs
     private String name;
     private String address;
     private double rating;

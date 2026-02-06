@@ -20,10 +20,12 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/actuator/**",
-                                "/api/saloon/**"
+                                "/api/saloon/**" // Allow all - authentication handled by UserContextFilter and controller
                         ).permitAll()
                         .anyRequest().permitAll()
                 );
+        // Note: Authentication is handled by UserContextFilter (JWT validation)
+        // and role-based authorization is enforced in the controller
         return http.build();
     }
 }

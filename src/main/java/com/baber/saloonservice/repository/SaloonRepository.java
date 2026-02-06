@@ -5,9 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 public interface SaloonRepository extends JpaRepository<Saloon, Long> {
+    
+    // Find by UUID publicId (for external APIs)
+    Optional<Saloon> findByPublicId(UUID publicId);
 
     @Query("SELECT s.id FROM Saloon s JOIN s.specialists sp WHERE sp.id = :specialistId")
     Set<Long> findSaloonIdsBySpecialistId(@Param("specialistId") Long specialistId);

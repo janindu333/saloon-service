@@ -31,8 +31,30 @@ public class UserContextFilter extends OncePerRequestFilter {
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
+                
+                // Extract user information from claims
                 String userDetailsJson = claims.getSubject();
                 UserContext.setUserDetailsJson(userDetailsJson);
+                
+                // Extract role from claims
+                String role = claims.get("role", String.class);
+                if (role != null) {
+                    UserContext.setRole(role);
+                }
+                
+                // Extract userId from claims
+                Object userIdObj = claims.get("userId");
+                if (userIdObj != null) {
+                    Long userId = userIdObj instanceof Number ? ((Number) userIdObj).longValue() : null;
+                    if (userId != null) {
+                        UserContext.setUserId(userId);
+                    }
+                }
+                
+                // Extract username from subject
+                if (userDetailsJson != null) {
+                    UserContext.setUsername(userDetailsJson);
+                }
             }
             filterChain.doFilter(request, response);
         } catch (Exception e) {

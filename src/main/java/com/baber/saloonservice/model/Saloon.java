@@ -7,6 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.Where;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "t_saloon")
@@ -18,6 +19,13 @@ import java.util.List;
 public class Saloon extends Base {
     @Transient
     private static final long serialVersionUID = -1L;
+    
+    @Column(unique = true, nullable = false, updatable = false, columnDefinition = "BINARY(16)")
+    private UUID publicId;
+    
+    @Column(nullable = false)
+    private Long ownerId; // User ID from identity-service
+    
     private String name;
     private String address;
     private double rating;
@@ -30,7 +38,8 @@ public class Saloon extends Base {
     private String openTime;
     private String closeTime;
     // Primary location for the saloon
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Cascade PERSIST so that a newly created Location is saved automatically
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "primary_location_id")
     private Location primaryLocation;
     
