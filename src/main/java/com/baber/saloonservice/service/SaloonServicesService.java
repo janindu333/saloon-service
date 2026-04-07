@@ -141,4 +141,11 @@ public class SaloonServicesService {
         return saloonServiceRepository.save(existingServices);
     }
 
+    public List<SaloonServices> getServicesBySaloonId(Long saloonId) {
+        return saloonServiceRepository.findBySaloonId(saloonId);
+    }
+
+    public List<SaloonServiceType> getServiceTypesByServiceId(Long serviceId) {
+        return saloonServiceTypeRepository.findBySaloonServiceId(serviceId);
+    }
 }

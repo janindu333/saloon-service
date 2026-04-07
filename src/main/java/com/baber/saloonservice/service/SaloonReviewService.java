@@ -8,6 +8,8 @@ import com.baber.saloonservice.repository.SaloonReviewRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SaloonReviewService {
@@ -37,4 +39,25 @@ public class SaloonReviewService {
         saloonReviewRepository.deleteById(id);
     }
 
+    public List<SaloonReview> getReviewsBySaloonId(Long saloonId) {
+        return saloonReviewRepository.findBySaloonId(saloonId);
+    }
+
+    public SaloonReview getReviewById(Long id) {
+        Optional<SaloonReview> review = saloonReviewRepository.findById(id);
+        return review.orElse(null);
+    }
+
+    public void updateReview(Long id, SaloonReviewRequest reviewRequest) {
+        Optional<SaloonReview> existingReview = saloonReviewRepository.findById(id);
+        if (existingReview.isPresent()) {
+            SaloonReview review = existingReview.get();
+            review.setReviewDesc(reviewRequest.getReviewDescription());
+            review.setRating(reviewRequest.getRating());
+            review.setReviewAddedTime(LocalDateTime.now());
+            saloonReviewRepository.save(review);
+        } else {
+            throw new EntityNotFoundException("Review not found with id: " + id);
+        }
+    }
 }

@@ -73,4 +73,35 @@ public class SaloonSpecialistService {
         return saloonSpecialistRepository.findById(id);
     }
 
+    public SaloonSpecialist getSpecialistById(Long id) {
+        Optional<SaloonSpecialist> specialist = saloonSpecialistRepository.findById(id);
+        return specialist.orElse(null);
+    }
+
+    public void updateSpecialist(Long id, SaloonSpecialist updatedSpecialist) {
+        Optional<SaloonSpecialist> existingSpecialist = saloonSpecialistRepository.findById(id);
+        if (existingSpecialist.isPresent()) {
+            SaloonSpecialist specialist = existingSpecialist.get();
+            specialist.setName(updatedSpecialist.getName());
+            specialist.setPossition(updatedSpecialist.getPossition());
+            specialist.setImage(updatedSpecialist.getImage());
+            specialist.setNumber(updatedSpecialist.getNumber());
+            specialist.setAbout(updatedSpecialist.getAbout());
+            saloonSpecialistRepository.save(specialist);
+        } else {
+            throw new IllegalArgumentException("Specialist not found with id: " + id);
+        }
+    }
+
+    public void deleteSpecialist(Long id) {
+        if (saloonSpecialistRepository.existsById(id)) {
+            saloonSpecialistRepository.deleteById(id);
+        } else {
+            throw new IllegalArgumentException("Specialist not found with id: " + id);
+        }
+    }
+
+    public List<SaloonSpecialist> getSpecialistsByService(Long serviceId) {
+        return saloonSpecialistRepository.findByServiceId(serviceId);
+    }
 }
