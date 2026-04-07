@@ -7,12 +7,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Location information for salon")
-public class LocationDTO {
+public class LocationDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
     
     @Schema(description = "Location ID (optional for new locations)", example = "0", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Long id;

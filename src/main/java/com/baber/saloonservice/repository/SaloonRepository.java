@@ -14,6 +14,13 @@ public interface SaloonRepository extends JpaRepository<Saloon, Long> {
     // Find by UUID publicId (for external APIs)
     Optional<Saloon> findByPublicId(UUID publicId);
 
+    /**
+     * Find the first saloon owned by a given owner.
+     * Used by identity-service to determine if an owner already
+     * has at least one salon created.
+     */
+    Optional<Saloon> findFirstByOwnerId(Long ownerId);
+
     @Query("SELECT s.id FROM Saloon s JOIN s.specialists sp WHERE sp.id = :specialistId")
     Set<Long> findSaloonIdsBySpecialistId(@Param("specialistId") Long specialistId);
     

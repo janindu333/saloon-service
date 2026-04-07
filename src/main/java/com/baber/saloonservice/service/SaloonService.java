@@ -308,6 +308,27 @@ public class SaloonService {
     public Optional<Saloon> findByPublicId(UUID publicId) {
         return saloonRepository.findByPublicId(publicId);
     }
+
+    /**
+     * Find the first saloon for a given owner.
+     * This is primarily used by other services (e.g., identity-service)
+     * to determine whether an owner already has a salon.
+     */
+    public Optional<Saloon> findFirstSalonByOwnerId(Long ownerId) {
+        return saloonRepository.findFirstByOwnerId(ownerId);
+    }
+
+    /**
+     * Check whether the given salon has completed onboarding-related data:
+     * business hours set, at least one service, and at least one staff invitation.
+     * Used by identity-service to sync onboarding status on login.
+     */
+    public boolean[] getOnboardingCompletionFlagsForSalon(Long salonId) {
+        boolean hasBusinessHours = !businessHoursRepository.findBySalonId(salonId).isEmpty();
+        boolean hasServices = !saloonServiceRepository.findBySaloonId(salonId).isEmpty();
+        boolean hasStaffInvite = !staffInvitationRepository.findBySalonIdOrderByCreatedAtDesc(salonId).isEmpty();
+        return new boolean[] { hasBusinessHours, hasServices, hasStaffInvite };
+    }
     
     private Saloon findSalonByPublicIdOrThrow(UUID salonId) {
         return saloonRepository.findByPublicId(salonId)

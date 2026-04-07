@@ -5,6 +5,7 @@ import com.baber.saloonservice.dto.*;
 import com.baber.saloonservice.model.OfferItems;
 import com.baber.saloonservice.model.Saloon;
 import com.baber.saloonservice.service.SaloonService;
+import com.baber.saloonservice.dto.OwnerSalonInfoResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -69,6 +70,43 @@ public class SaloonController {
         } catch (Exception e) {
             e.printStackTrace();
             return new BaseResponse<>(false, "Failure: " + e.getMessage(), 1, "", null);
+        }
+    }
+
+    /**
+     * Internal helper endpoint: get a lightweight summary of an owner's salon.
+     *
+     * This is primarily used by other backend services (e.g., identity-service)
+     * to determine if an owner already has a salon and to obtain its publicId.
+     */
+    @GetMapping("/owner/{ownerId}/summary")
+    public ResponseEntity<BaseResponse<OwnerSalonInfoResponse>> getOwnerSalonSummary(
+            @PathVariable Long ownerId) {
+        try {
+            return saloonService.findFirstSalonByOwnerId(ownerId)
+                    .map(saloon -> {
+                        boolean[] flags = saloonService.getOnboardingCompletionFlagsForSalon(saloon.getId());
+                        OwnerSalonInfoResponse data = new OwnerSalonInfoResponse(
+                                saloon.getPublicId() != null ? saloon.getPublicId().toString() : null,
+                                null, // salonStatus will be derived by identity-service
+                                flags[0], // hasBusinessHours
+                                flags[1], // hasServices
+                                flags[2]  // hasStaffInvite
+                        );
+                        return ResponseEntity.ok(
+                                new BaseResponse<>(true, "Success", 0, null, data)
+                        );
+                    })
+                    .orElseGet(() -> ResponseEntity.ok(
+                            new BaseResponse<>(true, "Owner has no salons", 0, null, null)
+                    ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponse<>(false, null,
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Failed to get owner salon summary: " + e.getMessage(),
+                            null));
         }
     }
 
