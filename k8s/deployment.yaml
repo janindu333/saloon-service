@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saloon-service
+  namespace: saloon-system
+  labels:
+    app: saloon-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saloon-service
+  template:
+    metadata:
+      labels:
+        app: saloon-service
+    spec:
+      containers:
+        - name: saloon-service
+          image: saloon-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "k8s"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: SPRING_REDIS_HOST
+              value: "redis-service"
+            - name: SPRING_REDIS_PORT
+              value: "6379"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis-service"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"

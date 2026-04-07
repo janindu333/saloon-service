@@ -5,11 +5,41 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 public interface SaloonRepository extends JpaRepository<Saloon, Long> {
+    
+    // Find by UUID publicId (for external APIs)
+    Optional<Saloon> findByPublicId(UUID publicId);
+
+    /**
+     * Find the first saloon owned by a given owner.
+     * Used by identity-service to determine if an owner already
+     * has at least one salon created.
+     */
+    Optional<Saloon> findFirstByOwnerId(Long ownerId);
 
     @Query("SELECT s.id FROM Saloon s JOIN s.specialists sp WHERE sp.id = :specialistId")
     Set<Long> findSaloonIdsBySpecialistId(@Param("specialistId") Long specialistId);
+    
+    // Find saloons by category
+    @Query("SELECT DISTINCT s FROM Saloon s JOIN s.categories c WHERE c.id = :categoryId")
+    List<Saloon> findByCategoryId(@Param("categoryId") Long categoryId);
+    
+    // Search saloons by name, address, description, or phone number
+    @Query("SELECT s FROM Saloon s WHERE " +
+           "LOWER(s.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(s.address) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(s.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(s.phoneNumber) LIKE LOWER(CONCAT('%', :query, '%'))")
+    List<Saloon> searchSaloons(@Param("query") String query);
+    
+    // Find saloons by location (primary or secondary)
+    @Query("SELECT DISTINCT s FROM Saloon s " +
+           "LEFT JOIN s.locations l " +
+           "WHERE s.primaryLocation.id = :locationId OR l.id = :locationId")
+    List<Saloon> findByLocationId(@Param("locationId") Long locationId);
 }
 
