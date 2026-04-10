@@ -37,3 +37,5 @@ spec:
               value: "redis-service"
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-service:9092"
