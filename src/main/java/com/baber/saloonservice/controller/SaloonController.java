@@ -83,9 +83,9 @@ public class SaloonController {
     public ResponseEntity<BaseResponse<OwnerSalonInfoResponse>> getOwnerSalonSummary(
             @PathVariable Long ownerId) {
         try {
-            return saloonService.findFirstSalonByOwnerId(ownerId)
+            return saloonService.findPreferredSalonForOwnerSummary(ownerId)
                     .map(saloon -> {
-                        boolean[] flags = saloonService.getOnboardingCompletionFlagsForSalon(saloon.getId());
+                        boolean[] flags = saloonService.getOnboardingCompletionFlagsForOwner(ownerId);
                         OwnerSalonInfoResponse data = new OwnerSalonInfoResponse(
                                 saloon.getPublicId() != null ? saloon.getPublicId().toString() : null,
                                 null, // salonStatus will be derived by identity-service

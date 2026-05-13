@@ -25,6 +25,9 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "k8s"
+            # Explicit so Spring's api.gateway.url is not corrupted by K8s-injected API_GATEWAY_* service env vars.
+            - name: API_GATEWAY_URL
+              value: "/"
             - name: REDIS_HOST
               value: "redis-service"
             - name: REDIS_PORT
@@ -39,3 +42,19 @@ spec:
               value: "6379"
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "kafka-service:9092"
+            - name: DB_USERNAME
+              value: "saloon_user"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: saloon-secrets
+                  key: db-password
+            - name: DB_NAME
+              value: "saloon_service"
+            - name: DB_HOST
+              value: "mysql-service"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: saloon-secrets
+                  key: jwt-secret
