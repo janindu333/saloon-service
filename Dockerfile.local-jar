@@ -1,0 +1,7 @@
+# Fast local image: requires `mvn -DskipTests package` first (copies pre-built jar).
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+COPY target/saloon-service-0.0.1-SNAPSHOT.jar app.jar
+ENV SPRING_PROFILES_ACTIVE=docker
+EXPOSE 8083
+ENTRYPOINT ["java", "-jar", "app.jar"]

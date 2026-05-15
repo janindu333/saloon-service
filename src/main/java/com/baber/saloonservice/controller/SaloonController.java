@@ -35,9 +35,11 @@ public class SaloonController {
             Long userId = UserContext.getUserId();
             
             if (role == null || userId == null) {
+                String detail = (role != null && userId == null)
+                        ? "Token accepted but local user id could not be resolved. Check identity-service JWT_ISSUER_URI matches token iss, and that this Keycloak user is linked in the app database."
+                        : "Authentication required. Provide a valid Bearer token with role and linked application user.";
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new BaseResponse<>(false, null, HttpStatus.UNAUTHORIZED.value(), 
-                        "Authentication required. Please provide a valid bearer token.", null));
+                    .body(new BaseResponse<>(false, null, HttpStatus.UNAUTHORIZED.value(), detail, null));
             }
             
             // Check role-based authorization - only owner and super_admin can create salons
@@ -88,10 +90,12 @@ public class SaloonController {
                         boolean[] flags = saloonService.getOnboardingCompletionFlagsForOwner(ownerId);
                         OwnerSalonInfoResponse data = new OwnerSalonInfoResponse(
                                 saloon.getPublicId() != null ? saloon.getPublicId().toString() : null,
+                                saloon.getId(),
                                 null, // salonStatus will be derived by identity-service
                                 flags[0], // hasBusinessHours
                                 flags[1], // hasServices
-                                flags[2]  // hasStaffInvite
+                                flags[2], // hasStaffInvite
+                                flags[3]  // hasPaymentSetup
                         );
                         return ResponseEntity.ok(
                                 new BaseResponse<>(true, "Success", 0, null, data)
@@ -107,6 +111,23 @@ public class SaloonController {
                             HttpStatus.INTERNAL_SERVER_ERROR.value(),
                             "Failed to get owner salon summary: " + e.getMessage(),
                             null));
+        }
+    }
+
+    /**
+     * Resolve public UUID or numeric id to internal saloon primary key (for other services / dashboards).
+     */
+    @GetMapping("/resolve/{saloonIdOrPublicId}")
+    public ResponseEntity<BaseResponse<Long>> resolveSaloonId(@PathVariable String saloonIdOrPublicId) {
+        try {
+            Long internalId = saloonService.resolveSaloonId(saloonIdOrPublicId);
+            return ResponseEntity.ok(new BaseResponse<>(true, "Success", 0, null, internalId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(new BaseResponse<>(false, null, 400, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponse<>(false, null, 500, "Failed to resolve saloon id: " + e.getMessage(), null));
         }
     }
 

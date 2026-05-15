@@ -6,6 +6,7 @@ import com.baber.saloonservice.dto.SaloonServiceRequest;
 import com.baber.saloonservice.dto.SaloonServiceTypeRequest;
 import com.baber.saloonservice.model.SaloonServiceType;
 import com.baber.saloonservice.model.SaloonServices;
+import com.baber.saloonservice.service.SaloonService;
 import com.baber.saloonservice.service.SaloonServicesService;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.MediaType;
@@ -17,9 +18,11 @@ import java.util.List;
 @RequestMapping("/api/saloon/services")
 public class SaloonServicesController {
     private final SaloonServicesService saloonServicesService;
+    private final SaloonService saloonService;
 
-    public SaloonServicesController(SaloonServicesService saloonServicesService) {
+    public SaloonServicesController(SaloonServicesService saloonServicesService, SaloonService saloonService) {
         this.saloonServicesService = saloonServicesService;
+        this.saloonService = saloonService;
     }
 
     @PostMapping(value = "/create", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -109,10 +112,13 @@ public class SaloonServicesController {
     }
 
     @GetMapping("/getBySaloonId/{saloonId}")
-    public BaseResponse<List<SaloonServices>> getServicesBySaloonId(@PathVariable Long saloonId) {
+    public BaseResponse<List<SaloonServices>> getServicesBySaloonId(@PathVariable String saloonId) {
         try {
-            List<SaloonServices> services = saloonServicesService.getServicesBySaloonId(saloonId);
+            Long internalSaloonId = saloonService.resolveSaloonId(saloonId);
+            List<SaloonServices> services = saloonServicesService.getServicesBySaloonId(internalSaloonId);
             return new BaseResponse<>(true, "Success", 0, "", services);
+        } catch (IllegalArgumentException e) {
+            return new BaseResponse<>(false, e.getMessage(), 400, "", null);
         } catch (Exception e) {
             e.printStackTrace();
             return new BaseResponse<>(false, "Failed to fetch services: " + e.getMessage(), 1, "", null);

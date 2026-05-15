@@ -19,17 +19,25 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.security.Key;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 @Component
 @Order(1)
 public class UserContextFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(UserContextFilter.class);
 
     /**
      * Base64-encoded HMAC key — must match identity-service / api-gateway ({@code Decoders.BASE64.decode} + HS256).
@@ -110,9 +118,16 @@ public class UserContextFilter extends OncePerRequestFilter {
                     String.class
             );
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("identity /auth/internal/me-id non-2xx or empty body: {}", response.getStatusCode());
                 return null;
             }
             JsonNode root = objectMapper.readTree(response.getBody());
+            JsonNode successNode = root.get("success");
+            if (successNode == null || !successNode.asBoolean(false)) {
+                JsonNode msg = root.get("message");
+                log.warn("identity /auth/internal/me-id success=false: {}", msg != null ? msg.asText() : response.getBody());
+                return null;
+            }
             JsonNode data = root.get("data");
             if (data != null && data.isNumber()) {
                 return data.longValue();
@@ -121,33 +136,140 @@ public class UserContextFilter extends OncePerRequestFilter {
                 return Long.parseLong(data.asText());
             }
             return null;
-        } catch (Exception ignored) {
+        } catch (RestClientResponseException e) {
+            log.warn("identity /auth/internal/me-id HTTP {}: {}", e.getStatusCode().value(), e.getResponseBodyAsString());
+            return null;
+        } catch (Exception e) {
+            log.warn("identity /auth/internal/me-id failed: {}", e.getMessage());
             return null;
         }
     }
 
-    @Nullable
-    private String extractRole(Map<String, ?> claims) {
-        String role = stringClaim(claims, "role");
-        if (role != null) {
-            return role;
+    private static void addRolesFromAccess(Map<?, ?> accessMap, List<String> out) {
+        if (accessMap == null) {
+            return;
         }
-        Object realmAccessObj = claims.get("realm_access");
-        if (!(realmAccessObj instanceof java.util.Map<?, ?> realmAccessMap)) {
-            return null;
-        }
-        Object rolesObj = realmAccessMap.get("roles");
-        if (!(rolesObj instanceof java.util.List<?> roles) || roles.isEmpty()) {
-            return null;
+        Object rolesObj = accessMap.get("roles");
+        if (!(rolesObj instanceof Collection<?> roles)) {
+            return;
         }
         for (Object roleObj : roles) {
-            if (!(roleObj instanceof String r)) continue;
-            if ("super_admin".equalsIgnoreCase(r) || "admin".equalsIgnoreCase(r) || "owner".equalsIgnoreCase(r)) {
-                return r;
+            if (roleObj == null) {
+                continue;
+            }
+            String r = roleObj.toString().trim();
+            if (!r.isEmpty()) {
+                out.add(r);
             }
         }
-        Object first = roles.get(0);
-        return first == null ? null : first.toString();
+    }
+
+    private static void collectKeycloakRoles(Map<String, ?> claims, List<String> out) {
+        Object realmAccessObj = claims.get("realm_access");
+        if (realmAccessObj instanceof Map<?, ?> realmAccess) {
+            addRolesFromAccess(realmAccess, out);
+        }
+        Object resourceAccessObj = claims.get("resource_access");
+        if (resourceAccessObj instanceof Map<?, ?> resourceAccess) {
+            for (Object clientObj : resourceAccess.values()) {
+                if (clientObj instanceof Map<?, ?> clientAccess) {
+                    addRolesFromAccess(clientAccess, out);
+                }
+            }
+        }
+    }
+
+    /** Custom / legacy tokens: top-level {@code roles} or Spring-style {@code authorities}. */
+    private static void collectTopLevelRoleArrays(Map<String, ?> claims, List<String> out) {
+        Object rolesObj = claims.get("roles");
+        if (rolesObj instanceof Collection<?> roles) {
+            for (Object roleObj : roles) {
+                if (roleObj == null) {
+                    continue;
+                }
+                String r = roleObj.toString().trim();
+                if (!r.isEmpty()) {
+                    out.add(r);
+                }
+            }
+        }
+        Object authObj = claims.get("authorities");
+        if (authObj instanceof Collection<?> auths) {
+            for (Object a : auths) {
+                if (a == null) {
+                    continue;
+                }
+                String r = a.toString().trim();
+                if (!r.isEmpty()) {
+                    out.add(r);
+                }
+            }
+        }
+    }
+
+    private static String stripRolePrefix(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String t = raw.trim();
+        while (t.length() >= 5) {
+            if (t.regionMatches(true, 0, "ROLE_", 0, 5)) {
+                t = t.substring(5).trim();
+            } else if (t.regionMatches(true, 0, "role_", 0, 5)) {
+                t = t.substring(5).trim();
+            } else {
+                break;
+            }
+        }
+        return t;
+    }
+
+    private static boolean roleMatchesPreferred(String raw, String preferred) {
+        if (raw == null || preferred == null) {
+            return false;
+        }
+        if (preferred.equalsIgnoreCase(raw)) {
+            return true;
+        }
+        return preferred.equalsIgnoreCase(stripRolePrefix(raw));
+    }
+
+    @Nullable
+    private String canonicalizeChosenRole(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String stripped = stripRolePrefix(raw);
+        if ("admin".equalsIgnoreCase(stripped) || "administrator".equalsIgnoreCase(stripped)) {
+            return "admin";
+        }
+        if ("super_admin".equalsIgnoreCase(stripped)) {
+            return "super_admin";
+        }
+        if ("owner".equalsIgnoreCase(stripped)) {
+            return "owner";
+        }
+        return raw.trim();
+    }
+
+    @Nullable
+    private String extractRole(Map<String, ?> claims) {
+        String direct = stringClaim(claims, "role");
+        if (direct != null) {
+            return canonicalizeChosenRole(direct);
+        }
+        List<String> roles = new ArrayList<>();
+        collectKeycloakRoles(claims, roles);
+        collectTopLevelRoleArrays(claims, roles);
+        for (String preferred : List.of(
+                "super_admin", "admin", "owner", "Administrator", "Manager", "Customer", "Staff", "Scheduler")) {
+            for (String r : roles) {
+                if (roleMatchesPreferred(r, preferred)) {
+                    return canonicalizeChosenRole(r);
+                }
+            }
+        }
+        return roles.isEmpty() ? null : canonicalizeChosenRole(roles.get(0));
     }
 
     @Override
@@ -159,7 +281,7 @@ public class UserContextFilter extends OncePerRequestFilter {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7).trim();
                 if (token.isEmpty()) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    writeUnauthorized(response, "empty_bearer_token", "Bearer token is empty");
                     return;
                 }
                 try {
@@ -179,7 +301,12 @@ public class UserContextFilter extends OncePerRequestFilter {
                     Object userIdObj = claims.get("userId");
                     Long userId = userIdObj instanceof Number ? ((Number) userIdObj).longValue() : null;
                     if (userId == null && userIdObj instanceof String userIdStr && !userIdStr.isBlank()) {
-                        userId = Long.parseLong(userIdStr);
+                        try {
+                            userId = Long.parseLong(userIdStr);
+                        } catch (NumberFormatException nfe) {
+                            log.warn("Invalid userId claim in JWT for {}: {}", request.getRequestURI(), userIdStr);
+                            userId = null;
+                        }
                     }
                     if (userId == null) {
                         userId = resolveUserIdFromIdentity(authHeader);
@@ -193,13 +320,21 @@ public class UserContextFilter extends OncePerRequestFilter {
                         username = stringClaim(claims, "email");
                     }
                     if (username == null) {
+                        username = stringClaim(claims, "username");
+                    }
+                    if (username == null) {
                         username = userDetailsJson.isBlank() ? null : userDetailsJson;
                     }
                     if (username != null) {
                         UserContext.setUsername(username);
                     }
                 } catch (JwtException e) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    log.warn("JWT rejected for {}: {}", request.getRequestURI(), e.getMessage());
+                    writeUnauthorized(response, "invalid_token", e.getMessage());
+                    return;
+                } catch (Exception e) {
+                    log.warn("Bearer processing failed for {}: {}", request.getRequestURI(), e.getMessage());
+                    writeUnauthorized(response, "auth_processing_error", "Failed to process authentication");
                     return;
                 }
             }
@@ -207,5 +342,16 @@ public class UserContextFilter extends OncePerRequestFilter {
         } finally {
             UserContext.clear();
         }
+    }
+
+    private void writeUnauthorized(HttpServletResponse response, String code, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("success", false);
+        body.put("code", code);
+        body.put("message", message != null ? message : "");
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }
