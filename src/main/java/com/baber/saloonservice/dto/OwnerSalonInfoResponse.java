@@ -21,6 +21,11 @@ public class OwnerSalonInfoResponse {
     private String saloonId;
 
     /**
+     * Internal numeric saloon id (for booking-service and legacy APIs).
+     */
+    private Long internalSaloonId;
+
+    /**
      * Optional high-level status of the salon.
      * Currently not populated by saloon-service; the identity-service
      * derives a value such as "pending_setup" or "active" based on
@@ -45,5 +50,11 @@ public class OwnerSalonInfoResponse {
      * Used by identity-service to auto-complete onboarding step "staff_invitation".
      */
     private Boolean hasStaffInvite;
+
+    /**
+     * Whether payment settings are configured with at least one accepted method.
+     * Used by identity-service to auto-complete onboarding step "payment_setup".
+     */
+    private Boolean hasPaymentSetup;
 }
 

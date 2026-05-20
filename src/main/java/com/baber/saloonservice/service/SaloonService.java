@@ -310,6 +310,31 @@ public class SaloonService {
     }
 
     /**
+     * Resolve numeric DB id or UUID {@code publicId} to internal saloon primary key.
+     */
+    public Long resolveSaloonId(String saloonIdOrPublicId) {
+        if (saloonIdOrPublicId == null || saloonIdOrPublicId.isBlank()) {
+            throw new IllegalArgumentException("saloonId is required");
+        }
+        String trimmed = saloonIdOrPublicId.trim();
+        try {
+            long numericId = Long.parseLong(trimmed);
+            return saloonRepository.findById(numericId)
+                    .map(Saloon::getId)
+                    .orElseThrow(() -> new IllegalArgumentException("Saloon not found: " + trimmed));
+        } catch (NumberFormatException ex) {
+            try {
+                UUID publicId = UUID.fromString(trimmed);
+                return saloonRepository.findByPublicId(publicId)
+                        .map(Saloon::getId)
+                        .orElseThrow(() -> new IllegalArgumentException("Saloon not found: " + trimmed));
+            } catch (IllegalArgumentException badUuid) {
+                throw new IllegalArgumentException("Invalid saloon id: " + trimmed);
+            }
+        }
+    }
+
+    /**
      * Find the first saloon for a given owner.
      * This is primarily used by other services (e.g., identity-service)
      * to determine whether an owner already has a salon.
@@ -327,7 +352,64 @@ public class SaloonService {
         boolean hasBusinessHours = !businessHoursRepository.findBySalonId(salonId).isEmpty();
         boolean hasServices = !saloonServiceRepository.findBySaloonId(salonId).isEmpty();
         boolean hasStaffInvite = !staffInvitationRepository.findBySalonIdOrderByCreatedAtDesc(salonId).isEmpty();
-        return new boolean[] { hasBusinessHours, hasServices, hasStaffInvite };
+        boolean hasPaymentSetup = hasConfiguredPaymentSettings(salonId);
+        return new boolean[] { hasBusinessHours, hasServices, hasStaffInvite, hasPaymentSetup };
+    }
+
+    private boolean hasConfiguredPaymentSettings(Long salonId) {
+        return paymentSettingsRepository.findBySalonId(salonId)
+                .map(ps -> Boolean.TRUE.equals(ps.getCashAccepted())
+                        || Boolean.TRUE.equals(ps.getCardAccepted())
+                        || Boolean.TRUE.equals(ps.getOnlineAccepted())
+                        || Boolean.TRUE.equals(ps.getMobileAccepted()))
+                .orElse(false);
+    }
+
+    /**
+     * ORs completion across every salon owned by the user. Fixes cases where {@link #findFirstByOwnerId}
+     * returns a different row than the salon where services or invitations were created.
+     */
+    public boolean[] getOnboardingCompletionFlagsForOwner(Long ownerId) {
+        List<Saloon> saloons = saloonRepository.findByOwnerIdOrderByIdDesc(ownerId);
+        if (saloons.isEmpty()) {
+            return new boolean[] { false, false, false, false };
+        }
+        boolean hasBusinessHours = false;
+        boolean hasServices = false;
+        boolean hasStaffInvite = false;
+        boolean hasPaymentSetup = false;
+        for (Saloon s : saloons) {
+            boolean[] f = getOnboardingCompletionFlagsForSalon(s.getId());
+            hasBusinessHours |= f[0];
+            hasServices |= f[1];
+            hasStaffInvite |= f[2];
+            hasPaymentSetup |= f[3];
+            if (hasBusinessHours && hasServices && hasStaffInvite && hasPaymentSetup) {
+                break;
+            }
+        }
+        return new boolean[] { hasBusinessHours, hasServices, hasStaffInvite, hasPaymentSetup };
+    }
+
+    /**
+     * Pick a salon to expose as {@code saloonId} in owner summary: highest onboarding score, then newest id.
+     */
+    public Optional<Saloon> findPreferredSalonForOwnerSummary(Long ownerId) {
+        List<Saloon> saloons = saloonRepository.findByOwnerIdOrderByIdDesc(ownerId);
+        if (saloons.isEmpty()) {
+            return Optional.empty();
+        }
+        Saloon best = saloons.get(0);
+        int bestScore = -1;
+        for (Saloon s : saloons) {
+            boolean[] f = getOnboardingCompletionFlagsForSalon(s.getId());
+            int score = (f[0] ? 1 : 0) + (f[1] ? 1 : 0) + (f[2] ? 1 : 0);
+            if (score > bestScore) {
+                bestScore = score;
+                best = s;
+            }
+        }
+        return Optional.of(best);
     }
     
     private Saloon findSalonByPublicIdOrThrow(UUID salonId) {

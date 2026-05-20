@@ -21,6 +21,9 @@ public interface SaloonRepository extends JpaRepository<Saloon, Long> {
      */
     Optional<Saloon> findFirstByOwnerId(Long ownerId);
 
+    /** Newest first — used when an owner has multiple salons to aggregate onboarding flags. */
+    List<Saloon> findByOwnerIdOrderByIdDesc(Long ownerId);
+
     @Query("SELECT s.id FROM Saloon s JOIN s.specialists sp WHERE sp.id = :specialistId")
     Set<Long> findSaloonIdsBySpecialistId(@Param("specialistId") Long specialistId);
     
